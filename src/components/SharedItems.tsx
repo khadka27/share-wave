@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type React from "react";
+
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Copy,
@@ -147,7 +149,7 @@ export default function SharedItems({
 
   const getAvatarColor = (ip: string) => {
     // Generate a consistent color based on IP
-    const num = parseInt(ip.replace(/\./g, ""));
+    const num = Number.parseInt(ip.replace(/\./g, ""));
     const hue = num % 360;
     return `hsl(${hue}, 70%, 60%)`;
   };
@@ -161,6 +163,62 @@ export default function SharedItems({
       default:
         return <FileText className="h-4 w-4" />;
     }
+  };
+
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const currentItemId = useRef<string | null>(null);
+  const swipeThreshold = 100;
+
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+    touchStartX.current = e.touches[0].clientX;
+    currentItemId.current = id;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (
+      currentItemId.current &&
+      touchStartX.current - touchEndX.current > swipeThreshold
+    ) {
+      // Swiped left - delete the item
+      deleteItem(currentItemId.current);
+      toast.success("Item deleted");
+    }
+    // Reset values
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+    currentItemId.current = null;
+  };
+
+  const lastTap = useRef(0);
+  const tapTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDoubleTap = (content: string) => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // Double tap detected
+      if (tapTimeout.current) {
+        clearTimeout(tapTimeout.current);
+        tapTimeout.current = null;
+      }
+      copyToClipboard(content);
+    } else {
+      // First tap
+      if (tapTimeout.current) {
+        clearTimeout(tapTimeout.current);
+      }
+      tapTimeout.current = setTimeout(() => {
+        tapTimeout.current = null;
+      }, DOUBLE_TAP_DELAY);
+    }
+
+    lastTap.current = now;
   };
 
   const renderContent = (item: SharedItem & { contentType: string }) => {
@@ -177,7 +235,7 @@ export default function SharedItems({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary underline hover:text-primary/80 transition-colors"
+            className="text-primary underline hover:text-primary/80 transition-colors break-all"
           >
             {url}
           </a>
@@ -197,7 +255,8 @@ export default function SharedItems({
                   : "/api/placeholder/400/300"
               }
               alt="Shared image"
-              className="max-w-full h-auto"
+              className="max-w-full h-auto object-contain max-h-[300px] w-full"
+              loading="lazy"
             />
           </div>
         </div>
@@ -219,10 +278,10 @@ export default function SharedItems({
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="flex bg-muted rounded-md p-1 text-xs font-medium mr-2 flex-1 sm:flex-initial">
+          <div className="flex flex-wrap bg-muted rounded-md p-1 text-xs font-medium mr-2 flex-1 sm:flex-initial">
             <button
               onClick={() => setFilter("all")}
-              className={`px-3 py-1 rounded ${
+              className={`px-2 sm:px-3 py-1 rounded ${
                 filter === "all"
                   ? "bg-background shadow-sm"
                   : "text-muted-foreground"
@@ -232,33 +291,36 @@ export default function SharedItems({
             </button>
             <button
               onClick={() => setFilter("text")}
-              className={`px-3 py-1 rounded flex items-center gap-1 ${
+              className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${
                 filter === "text"
                   ? "bg-background shadow-sm"
                   : "text-muted-foreground"
               }`}
             >
-              <FileText className="h-3 w-3" /> Text
+              <FileText className="h-3 w-3" />{" "}
+              <span className="hidden xs:inline">Text</span>
             </button>
             <button
               onClick={() => setFilter("link")}
-              className={`px-3 py-1 rounded flex items-center gap-1 ${
+              className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${
                 filter === "link"
                   ? "bg-background shadow-sm"
                   : "text-muted-foreground"
               }`}
             >
-              <Link className="h-3 w-3" /> Links
+              <Link className="h-3 w-3" />{" "}
+              <span className="hidden xs:inline">Links</span>
             </button>
             <button
               onClick={() => setFilter("image")}
-              className={`px-3 py-1 rounded flex items-center gap-1 ${
+              className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${
                 filter === "image"
                   ? "bg-background shadow-sm"
                   : "text-muted-foreground"
               }`}
             >
-              <Image className="h-3 w-3" /> Images
+              <Image className="h-3 w-3" />{" "}
+              <span className="hidden xs:inline">Images</span>
             </button>
           </div>
 
@@ -326,7 +388,18 @@ export default function SharedItems({
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                <Card className="overflow-hidden border-border/50 hover:border-border/80 transition-colors">
+                <Card
+                  className="overflow-hidden border-border/50 hover:border-border/80 transition-colors"
+                  onTouchStart={(e) => handleTouchStart(e, item.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hidden sm:hidden touch-none pointer-events-none">
+                    <div className="flex flex-col items-center">
+                      <Trash2 className="h-4 w-4 text-red-500/70" />
+                      <span>Swipe to delete</span>
+                    </div>
+                  </div>
                   <CardHeader className="p-4 pb-2 flex flex-row justify-between items-start">
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -391,10 +464,16 @@ export default function SharedItems({
                       </TooltipProvider>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-2">
+                  <CardContent
+                    className="p-4 pt-2"
+                    onTouchEnd={() => handleDoubleTap(item.content)}
+                  >
                     {renderContent(
                       item as SharedItem & { contentType: string }
                     )}
+                    <div className="text-xs text-muted-foreground mt-2 sm:hidden">
+                      Double-tap to copy
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>

@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,15 +14,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Link, Image, FileText, Clock } from "lucide-react";
+import { Send, Link, Image, FileText, Clock, Mic, MicOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// TypeScript declarations for the Speech Recognition API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: typeof window.SpeechRecognition;
+  }
+}
 
 export default function ShareForm({ onShare }: { onShare: () => void }) {
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [contentType, setContentType] = useState("text");
   const [expiresIn, setExpiresIn] = useState("24h");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<Window['SpeechRecognition'] | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +76,67 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
   const isNearLimit = characterPercentage > 80;
   const isAtLimit = characterCount >= maxCharacters;
 
+  const getCharacterLimitColor = () => {
+    if (isAtLimit) return "text-red-500";
+    if (isNearLimit) return "text-amber-500";
+    return "text-green-500";
+  };
+
+  const toggleVoiceInput = () => {
+    if (
+      !("webkitSpeechRecognition" in window) &&
+      !("SpeechRecognition" in window)
+    ) {
+      toast.error("Voice input is not supported in your browser");
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: { results: Iterable<unknown> | ArrayLike<unknown>; }) => {
+      const transcript = Array.from(event.results)
+        .map((result) => (result as SpeechRecognitionResult)[0])
+        .map((result) => result.transcript)
+        .join("");
+
+      setContent((prev) => {
+        // Make sure we don't exceed the character limit
+        if ((prev + transcript).length <= maxCharacters) {
+          return prev + transcript;
+        }
+        return prev;
+      });
+    };
+
+    recognition.onerror = (event: { error: any; }) => {
+      console.error("Speech recognition error", event.error);
+      toast.error(`Voice input error: ${event.error}`);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    toast.success("Voice input activated. Speak now...");
+  };
+
   return (
     <Card className="border-border/50 shadow-md">
       <CardHeader className="pb-2">
@@ -92,18 +165,27 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
             onValueChange={setContentType}
             className="mb-4"
           >
-            <TabsList className="grid grid-cols-3 w-full md:w-1/2">
-              <TabsTrigger value="text" className="flex items-center gap-2">
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger
+                value="text"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2"
+              >
                 <FileText className="h-4 w-4" />
-                <span>Text</span>
+                <span className="text-xs sm:text-sm">Text</span>
               </TabsTrigger>
-              <TabsTrigger value="link" className="flex items-center gap-2">
+              <TabsTrigger
+                value="link"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2"
+              >
                 <Link className="h-4 w-4" />
-                <span>Link</span>
+                <span className="text-xs sm:text-sm">Link</span>
               </TabsTrigger>
-              <TabsTrigger value="image" className="flex items-center gap-2">
+              <TabsTrigger
+                value="image"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2"
+              >
                 <Image className="h-4 w-4" />
-                <span>Image</span>
+                <span className="text-xs sm:text-sm">Image</span>
               </TabsTrigger>
             </TabsList>
 
@@ -149,9 +231,9 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-end items-center mt-2">
+          <div className="flex sm:hidden justify-end items-center mt-2">
             <div
-              className="h-1 w-24 bg-border/50 rounded-full overflow-hidden"
+              className="h-1 w-16 bg-border/50 rounded-full overflow-hidden"
               title={`${characterCount}/${maxCharacters} characters`}
             >
               <div
@@ -174,11 +256,61 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
                   : "text-muted-foreground"
               }`}
             >
-              {characterCount}/{maxCharacters}
+              {characterCount}
             </span>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={`h-9 w-9 ${
+                isListening
+                  ? "bg-red-100 dark:bg-red-900/30 border-red-400"
+                  : ""
+              }`}
+              onClick={toggleVoiceInput}
+            >
+              {isListening ? (
+                <MicOff className="h-4 w-4 text-red-500" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {isListening ? "Stop voice input" : "Start voice input"}
+              </span>
+            </Button>
+            <div className="hidden sm:flex items-center">
+              <div
+                className="h-1 w-24 bg-border/50 rounded-full overflow-hidden"
+                title={`${characterCount}/${maxCharacters} characters`}
+              >
+                <div
+                  className={`h-full ${
+                    isNearLimit
+                      ? isAtLimit
+                        ? "bg-red-500"
+                        : "bg-amber-500"
+                      : "bg-green-500"
+                  }`}
+                  style={{ width: `${characterPercentage}%` }}
+                ></div>
+              </div>
+              <span
+                className={`text-xs ml-2 ${
+                  isNearLimit
+                    ? isAtLimit
+                      ? "text-red-500"
+                      : "text-amber-500"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {characterCount}/{maxCharacters}
+              </span>
+            </div>
+          </div>
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button
               type="submit"
