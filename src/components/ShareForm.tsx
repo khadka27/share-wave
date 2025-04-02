@@ -59,7 +59,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
   };
 
   const characterCount = content.length;
-  const maxCharacters = 500;
+  const maxCharacters = 50000000;
   const characterPercentage = (characterCount / maxCharacters) * 100;
   const isNearLimit = characterPercentage > 80;
   const isAtLimit = characterCount >= maxCharacters;
