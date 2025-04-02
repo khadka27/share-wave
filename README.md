@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShareWaves
 
-## Getting Started
+ShareWaves is a modern web application that enables seamless content sharing between devices on the same local network. Built with Next.js, TypeScript, and Tailwind CSS, this app allows users to quickly share text, links, and other content with anyone connected to the same IP address.
 
-First, run the development server:
+## Live Demo
+
+🌐 **[https://sharewaves.vercel.app](https://sharewaves.vercel.app)**
+
+## Features
+
+- **Local Network Sharing**: Share content instantly with all devices on the same network
+- **IP-Based Filtering**: Shared content is only visible to users with the same IP address
+- **Dark Mode Support**: Toggle between light and dark themes for comfortable viewing
+- **Copy Reference**: Easily copy shared content with a single click
+- **Responsive Design**: Works seamlessly across desktops, tablets, and mobile devices
+- **Real-time Updates**: See shared content immediately without refreshing the page
+
+## How It Works
+
+1. **Connect**: Ensure all devices are connected to the same WiFi network
+2. **Access**: Visit [sharewaves.vercel.app](https://sharewaves.vercel.app) from any device
+3. **Share**: Enter your content in the sharing form and submit
+4. **View**: All devices on the same network will see the shared content automatically
+5. **Copy**: Use the copy reference button to quickly copy shared content
+
+## Technology Stack
+
+- **Frontend**: Next.js, React, TypeScript
+- **Styling**: Tailwind CSS
+- **Deployment**: Vercel
+- **State Management**: React Hooks
+- **Routing**: Next.js App Router
+
+## Local Development
+
+Clone the repository:
+
+```bash
+git clone https://github.com/khadka27/share-with-me.git
+cd share-with-me
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application running locally.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testing Local Network Sharing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To test the sharing functionality across different devices on your local network:
 
-## Learn More
+1. Find your local IP address (e.g., 192.168.1.1)
+2. Run the development server
+3. On other devices, navigate to `http://your-local-ip:3000` (e.g., http://192.168.1.1:3000)
+4. Share content from any device to see it appear on all connected devices
 
-To learn more about Next.js, take a look at the following resources:
+## Future Enhancements
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- File sharing capabilities
+- User authentication (optional)
+- End-to-end encryption
+- Custom room creation
+- Persistent storage options
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Author
 
-## Deploy on Vercel
+- **Abishek Khadka**
+  - GitHub: [khadka27](https://github.com/khadka27)
+  - Email: abishekkhadka90@gmail.com
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is open source and available under the MIT License.
+
+## Acknowledgments
+
+- Thanks to the Next.js, React, and Tailwind CSS teams for their amazing tools
+- Deployed with [Vercel](https://vercel.com)
