@@ -221,6 +221,11 @@ export default function SharedItems({
     lastTap.current = now;
   };
 
+  const handleCopyClick = (e: React.MouseEvent, content: string) => {
+    e.stopPropagation();
+    copyToClipboard(content);
+  };
+
   const renderContent = (item: SharedItem & { contentType: string }) => {
     if (item.contentType === "link") {
       const urlMatch = item.content.match(/(https?:\/\/[^\s]+)/);
@@ -230,7 +235,7 @@ export default function SharedItems({
         : item.content;
 
       return (
-        <div>
+        <div className="select-text">
           <a
             href={url}
             target="_blank"
@@ -263,7 +268,11 @@ export default function SharedItems({
       );
     }
 
-    return <p className="whitespace-pre-wrap break-words">{item.content}</p>;
+    return (
+      <p className="whitespace-pre-wrap break-words select-text">
+        {item.content}
+      </p>
+    );
   };
 
   return (
@@ -432,7 +441,7 @@ export default function SharedItems({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/5"
-                              onClick={() => copyToClipboard(item.content)}
+                              onClick={(e) => handleCopyClick(e, item.content)}
                             >
                               <Copy className="h-4 w-4" />
                               <span className="sr-only">Copy</span>
@@ -465,12 +474,14 @@ export default function SharedItems({
                     </div>
                   </CardHeader>
                   <CardContent
-                    className="p-4 pt-2"
+                    className="p-4 pt-2 select-none"
                     onTouchEnd={() => handleDoubleTap(item.content)}
                   >
-                    {renderContent(
-                      item as SharedItem & { contentType: string }
-                    )}
+                    <div className="select-text">
+                      {renderContent(
+                        item as SharedItem & { contentType: string }
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground mt-2 sm:hidden">
                       Double-tap to copy
                     </div>
