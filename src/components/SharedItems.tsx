@@ -398,7 +398,7 @@ export default function SharedItems({
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <Card
-                  className="overflow-hidden border-border/50 hover:border-border/80 transition-colors"
+                  className=" border-border/50 hover:border-border/80 transition-colors w-[350px] md:w-[870px] relative"
                   onTouchStart={(e) => handleTouchStart(e, item.id)}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
