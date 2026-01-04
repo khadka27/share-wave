@@ -54,8 +54,8 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80 dark:from-background dark:to-background/90">
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border/10 py-3">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-10 bg-background border-b border-border py-4 shadow-sm">
         <div className="container mx-auto px-4 max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -63,7 +63,7 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="flex flex-col sm:flex-row justify-between items-center gap-3"
           >
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 text-transparent bg-clip-text flex items-center gap-2">
+            <h1 className="text-3xl sm:text-4xl font-bold bg-linear-to-r from-purple-600 via-pink-500 to-cyan-500 text-transparent bg-clip-text flex items-center gap-2">
               <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500" />
               ShareWave
             </h1>
@@ -71,7 +71,7 @@ export default function Home() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 bg-primary/10 rounded-full px-3 py-1">
+                    <div className="flex items-center gap-2 bg-secondary rounded-full px-4 py-1.5 border border-border">
                       <Users className="h-4 w-4 text-primary" />
                       <span className="text-sm font-medium">
                         {userCount} online
@@ -97,10 +97,10 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, height: 0, marginBottom: 0 }}
               transition={{ duration: 0.5 }}
-              className="mb-8 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 p-4 sm:p-6 rounded-xl border border-purple-500/20"
+              className="mb-8 bg-card p-6 rounded-xl border border-border shadow-md"
             >
               <div className="flex flex-col sm:flex-row items-start gap-4">
-                <div className="bg-primary/20 p-3 rounded-full shrink-0">
+                <div className="bg-primary/10 p-3 rounded-full shrink-0">
                   <Share2 className="h-6 w-6 text-primary" />
                 </div>
                 <div>

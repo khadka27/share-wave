@@ -367,9 +367,9 @@ export default function SharedItems({
           </div>
         </div>
       ) : filteredItems.length === 0 ? (
-        <Card className="border-dashed border-border/50">
+        <Card className="border-dashed border-border">
           <CardContent className="pt-10 pb-10 flex flex-col items-center justify-center text-center">
-            <div className="bg-primary/10 p-3 rounded-full mb-4">
+            <div className="bg-secondary p-3 rounded-full mb-4">
               {filter === "all" ? (
                 <RefreshCw className="h-6 w-6 text-primary/60" />
               ) : (
@@ -398,7 +398,7 @@ export default function SharedItems({
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <Card
-                  className=" border-border/50 hover:border-border/80 transition-colors w-[350px] md:w-[870px] relative"
+                  className="border-border hover:border-primary transition-colors w-full relative"
                   onTouchStart={(e) => handleTouchStart(e, item.id)}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
@@ -420,7 +420,7 @@ export default function SharedItems({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">Anonymous</span>
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-xs bg-secondary text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
                             {getContentTypeIcon(item.contentType)}
                             <span>{item.contentType}</span>
                           </span>
@@ -440,7 +440,7 @@ export default function SharedItems({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/5"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
                               onClick={(e) => handleCopyClick(e, item.content)}
                             >
                               <Copy className="h-4 w-4" />
@@ -459,7 +459,7 @@ export default function SharedItems({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-500/70 hover:text-red-500 hover:bg-red-500/10"
+                              className="h-8 w-8 text-red-500/70 hover:text-red-500 hover:bg-secondary"
                               onClick={() => deleteItem(item.id)}
                             >
                               <Trash2 className="h-4 w-4" />

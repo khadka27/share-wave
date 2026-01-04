@@ -32,7 +32,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
   const [contentType, setContentType] = useState("text");
   const [expiresIn, setExpiresIn] = useState("24h");
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<Window['SpeechRecognition'] | null>(null);
+  const recognitionRef = useRef<Window["SpeechRecognition"] | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +106,9 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    recognition.onresult = (event: { results: Iterable<unknown> | ArrayLike<unknown>; }) => {
+    recognition.onresult = (event: {
+      results: Iterable<unknown> | ArrayLike<unknown>;
+    }) => {
       const transcript = Array.from(event.results)
         .map((result) => (result as SpeechRecognitionResult)[0])
         .map((result) => result.transcript)
@@ -121,7 +123,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
       });
     };
 
-    recognition.onerror = (event: { error: any; }) => {
+    recognition.onerror = (event: { error: any }) => {
       console.error("Speech recognition error", event.error);
       toast.error(`Voice input error: ${event.error}`);
       setIsListening(false);
@@ -138,7 +140,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
   };
 
   return (
-    <Card className="border-border/50 shadow-md">
+    <Card className="border-border shadow-md">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between">
           <span>Share Something</span>
@@ -191,7 +193,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
 
             <TabsContent value="text" className="mt-4">
               <Textarea
-                className="min-h-[120px] resize-none bg-background/50 focus-visible:ring-primary/50"
+                className="min-h-[120px] resize-none bg-secondary focus-visible:ring-primary/50"
                 placeholder="Share a message, code snippet, or anything text-based..."
                 value={content}
                 onChange={(e) => {
@@ -205,7 +207,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
 
             <TabsContent value="link" className="mt-4">
               <Textarea
-                className="min-h-[120px] resize-none bg-background/50 focus-visible:ring-primary/50"
+                className="min-h-[120px] resize-none bg-secondary focus-visible:ring-primary/50"
                 placeholder="Share a URL with a description (optional)..."
                 value={content}
                 onChange={(e) => {
@@ -315,7 +317,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
             <Button
               type="submit"
               disabled={isLoading || !content.trim()}
-              className="gap-2 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 transition-all duration-300"
+              className="gap-2 bg-linear-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 transition-all duration-300"
             >
               {isLoading ? (
                 <>
