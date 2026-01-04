@@ -573,12 +573,9 @@ export default function SharedItems({
                     <QRCode
                       value={qrItem.content}
                       size={200}
-                      style={{
-                        height: "auto",
-                        maxWidth: "100%",
-                        width: "100%",
-                      }}
-                      viewBox={`0 0 256 256`}
+                      className="h-auto w-full max-w-full"
+                      fgColor="#000000"
+                      bgColor="#FFFFFF"
                     />
                   )}
                 </div>
