@@ -474,7 +474,7 @@ export default function SharedItems({
                               <span className="sr-only">QR Code</span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className="hidden sm:block">
                             <p>Show QR Code</p>
                           </TooltipContent>
                         </Tooltip>
@@ -493,7 +493,7 @@ export default function SharedItems({
                               <span className="sr-only">Copy</span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className="hidden sm:block">
                             <p>Copy to clipboard</p>
                           </TooltipContent>
                         </Tooltip>
@@ -512,7 +512,7 @@ export default function SharedItems({
                               <span className="sr-only">Delete</span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className="hidden sm:block">
                             <p>Delete</p>
                           </TooltipContent>
                         </Tooltip>
