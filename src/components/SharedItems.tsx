@@ -565,12 +565,22 @@ export default function SharedItems({
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-semibold">Scan QR Code</h3>
                 <div className="bg-white p-4 rounded-lg inline-block">
-                  <QRCode
-                    value={qrItem.content}
-                    size={200}
-                    style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                    viewBox={`0 0 256 256`}
-                  />
+                  {qrItem.content.length > 2000 ? (
+                    <div className="w-[200px] h-[200px] flex items-center justify-center bg-secondary text-muted-foreground rounded-md p-4 text-center text-sm border-dashed border-2">
+                      Content too large to generate QR Code
+                    </div>
+                  ) : (
+                    <QRCode
+                      value={qrItem.content}
+                      size={200}
+                      style={{
+                        height: "auto",
+                        maxWidth: "100%",
+                        width: "100%",
+                      }}
+                      viewBox={`0 0 256 256`}
+                    />
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground break-all px-2">
                   {qrItem.type === "link"

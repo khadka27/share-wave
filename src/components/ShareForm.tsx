@@ -160,7 +160,22 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
 
     recognition.onerror = (event: { error: any }) => {
       console.error("Speech recognition error", event.error);
-      toast.error(`Voice input error: ${event.error}`);
+      if (event.error === "network") {
+        toast.error(
+          "Voice input failed: Network error. Please check your internet connection."
+        );
+      } else if (
+        event.error === "not-allowed" ||
+        event.error === "permission-denied"
+      ) {
+        toast.error("Voice input failed: Microphone access denied.");
+      } else if (event.error === "no-speech") {
+        // Just stop listening without error
+        setIsListening(false);
+        return;
+      } else {
+        toast.error(`Voice input error: ${event.error}`);
+      }
       setIsListening(false);
     };
 
