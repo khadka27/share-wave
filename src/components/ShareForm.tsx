@@ -14,7 +14,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Link, Image, FileText, Clock, Mic, MicOff } from "lucide-react";
+import {
+  Send,
+  Link,
+  Image,
+  FileText,
+  Clock,
+  Mic,
+  MicOff,
+  Upload,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -33,6 +43,7 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
   const [expiresIn, setExpiresIn] = useState("24h");
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<Window["SpeechRecognition"] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +78,30 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
       toast.error("Failed to share content");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image size must be less than 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setContent(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setContent("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -164,7 +199,19 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
         <CardContent className="pt-2">
           <Tabs
             value={contentType}
-            onValueChange={setContentType}
+            onValueChange={(val) => {
+              setContentType(val);
+              // Clear content when switching tabs to avoid confusion
+              // But strictly speaking we might want to keep it.
+              // For image tab specifically, we might want to clear if it was text.
+              if (
+                val === "image" &&
+                !content.startsWith("data:image") &&
+                !content.startsWith("http")
+              ) {
+                setContent("");
+              }
+            }}
             className="mb-4"
           >
             <TabsList className="grid grid-cols-3 w-full">
@@ -220,15 +267,58 @@ export default function ShareForm({ onShare }: { onShare: () => void }) {
             </TabsContent>
 
             <TabsContent value="image" className="mt-4">
-              <div className="border-2 border-dashed border-border rounded-md p-4 text-center">
-                <p className="text-muted-foreground mb-2">Enter an image URL</p>
-                <input
-                  type="text"
-                  className="w-full p-2 rounded-md border border-input bg-background"
-                  placeholder="https://example.com/image.jpg"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                />
+              <div className="border-2 border-dashed border-border rounded-md p-6 text-center transition-colors hover:bg-muted/50 relative">
+                {content.startsWith("data:image") ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={content}
+                      alt="Preview"
+                      className="max-h-48 rounded-md shadow-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 shadow-md hover:bg-destructive/90 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <div className="bg-primary/10 p-3 rounded-full">
+                        <Upload className="h-6 w-6 text-primary" />
+                      </div>
+                      <p className="font-medium">Click to upload an image</p>
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPG, GIF up to 2MB
+                      </p>
+                    </label>
+                    <div className="mt-4 flex items-center gap-2 justify-center">
+                      <div className="h-px bg-border flex-1"></div>
+                      <span className="text-xs text-muted-foreground">OR</span>
+                      <div className="h-px bg-border flex-1"></div>
+                    </div>
+                    <input
+                      type="text"
+                      className="w-full mt-2 p-2 rounded-md border border-input bg-background/50 text-sm"
+                      placeholder="Paste image URL here..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                    />
+                  </>
+                )}
               </div>
             </TabsContent>
           </Tabs>

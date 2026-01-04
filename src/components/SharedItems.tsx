@@ -12,6 +12,9 @@ import {
   FileText,
   Image,
   Clock,
+  QrCode,
+  X,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import toast from "react-hot-toast";
+import QRCode from "react-qr-code";
 
 interface SharedItem {
   id: string;
@@ -44,6 +48,11 @@ export default function SharedItems({
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [qrItem, setQrItem] = useState<{
+    content: string;
+    type: string;
+  } | null>(null);
+  const [maxImage, setMaxImage] = useState<string | null>(null);
 
   const fetchItems = async () => {
     setIsLoading(true);
@@ -115,7 +124,8 @@ export default function SharedItems({
       item.contentType ||
       (item.content.startsWith("http")
         ? "link"
-        : item.content.includes("<img") ||
+        : item.content.startsWith("data:image") ||
+          item.content.includes("<img") ||
           item.content.match(/\.(jpg|jpeg|png|gif|webp)$/)
         ? "image"
         : "text");
@@ -251,11 +261,12 @@ export default function SharedItems({
 
     if (item.contentType === "image") {
       return (
-        <div>
-          <div className="rounded-md overflow-hidden mt-2 border border-border">
+        <div className="relative group">
+          <div className="rounded-md overflow-hidden mt-2 border border-border bg-black/5">
             <img
               src={
-                item.content.startsWith("http")
+                item.content.startsWith("http") ||
+                item.content.startsWith("data:image")
                   ? item.content
                   : "/api/placeholder/400/300"
               }
@@ -264,6 +275,17 @@ export default function SharedItems({
               loading="lazy"
             />
           </div>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaxImage(item.content);
+            }}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
         </div>
       );
     }
@@ -398,7 +420,7 @@ export default function SharedItems({
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <Card
-                  className="border-border hover:border-primary transition-colors w-full relative"
+                  className="border-border hover:border-primary transition-colors w-full relative group"
                   onTouchStart={(e) => handleTouchStart(e, item.id)}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
@@ -433,7 +455,31 @@ export default function SharedItems({
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                              onClick={() =>
+                                setQrItem({
+                                  content: item.content,
+                                  type: item.contentType || "text",
+                                })
+                              }
+                            >
+                              <QrCode className="h-4 w-4" />
+                              <span className="sr-only">QR Code</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Show QR Code</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -492,6 +538,83 @@ export default function SharedItems({
           </div>
         </AnimatePresence>
       )}
+
+      {/* QR Code Modal / Overlay */}
+      <AnimatePresence>
+        {qrItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+            onClick={() => setQrItem(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border rounded-xl shadow-lg p-6 max-w-sm w-full mx-auto relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setQrItem(null)}
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="text-center space-y-4">
+                <h3 className="text-lg font-semibold">Scan QR Code</h3>
+                <div className="bg-white p-4 rounded-lg inline-block">
+                  <QRCode
+                    value={qrItem.content}
+                    size={200}
+                    style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                    viewBox={`0 0 256 256`}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground break-all px-2">
+                  {qrItem.type === "link"
+                    ? qrItem.content
+                    : "Scan to copy content"}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Lightbox */}
+      <AnimatePresence>
+        {maxImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+            onClick={() => setMaxImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setMaxImage(null)}
+                className="absolute -top-12 right-0 text-white/70 hover:text-white"
+              >
+                <X className="h-8 w-8" />
+              </button>
+              <img
+                src={maxImage}
+                alt="Full preview"
+                className="max-w-full max-h-[85vh] object-contain rounded-md"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
