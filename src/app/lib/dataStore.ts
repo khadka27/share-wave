@@ -1,7 +1,5 @@
 // /app/lib/dataStore.ts
 import { EventEmitter } from "events";
-import fs from "fs";
-import path from "path";
 
 export interface Comment {
   id: string;
@@ -32,32 +30,10 @@ export interface SharedItem {
   expiresAt: number;
 }
 
-const DATA_FILE = path.join(process.cwd(), "data.json");
 const eventEmitter = new EventEmitter();
 
-// Load data from file
-const loadData = (): SharedItem[] => {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error("Error loading data from JSON:", error);
-  }
-  return [];
-};
-
-// Save data to file
-const saveData = (items: SharedItem[]) => {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2), "utf-8");
-  } catch (error) {
-    console.error("Error saving data to JSON:", error);
-  }
-};
-
-let sharedItems: SharedItem[] = loadData();
+// In-memory array for hyper-fast sharing. No JSON file saving.
+let sharedItems: SharedItem[] = [];
 
 export const dataStore = {
   subscribe: (listener: () => void) => {
@@ -84,7 +60,6 @@ export const dataStore = {
 
     if (updated) {
       sharedItems = validItems;
-      saveData(sharedItems);
     }
     
     return validItems.filter((item) => {
@@ -119,7 +94,6 @@ export const dataStore = {
       expiresAt: Date.now() + (expiresInHours * 60 * 60 * 1000),
     };
     sharedItems = [newItem, ...sharedItems];
-    saveData(sharedItems);
     dataStore.notify();
     return newItem;
   },
@@ -130,7 +104,6 @@ export const dataStore = {
     
     if (item.isBurnAfterReading) {
       sharedItems = sharedItems.filter(i => i.id !== id);
-      saveData(sharedItems);
       dataStore.notify();
     }
     return item;
@@ -140,7 +113,6 @@ export const dataStore = {
     const item = sharedItems.find(i => i.id === id);
     if (item) {
       item.reactions[emoji] = (item.reactions[emoji] || 0) + 1;
-      saveData(sharedItems);
       dataStore.notify();
       return true;
     }
@@ -157,7 +129,6 @@ export const dataStore = {
         timestamp: Date.now()
       };
       item.comments.push(newComment);
-      saveData(sharedItems);
       dataStore.notify();
       return newComment;
     }
@@ -170,12 +141,9 @@ export const dataStore = {
       (item) => !(item.id === id && item.ip === ip)
     );
     if (sharedItems.length !== initialLength) {
-      saveData(sharedItems);
       dataStore.notify();
       return true;
     }
     return false;
   },
 };
-
-

@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "8lujaza",
+    "content": "hello",
+    "contentType": "text",
+    "timestamp": 1780328820607,
+    "ip": "192.168.100.101",
+    "reactions": {},
+    "comments": [
+      {
+        "id": "9p4w2is",
+        "text": "hii",
+        "ip": "192.168.100.101",
+        "timestamp": 1780328826879
+      }
+    ],
+    "isBurnAfterReading": false,
+    "expiresAt": 1780415220607
+  }
+]
