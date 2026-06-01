@@ -283,7 +283,22 @@ export default function SharedItems({
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="flex flex-wrap bg-muted rounded-md p-1 text-xs font-medium mr-2 flex-1 sm:flex-initial">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              setIsRefreshing(true);
+              onRefresh();
+              setTimeout(() => setIsRefreshing(false), 1000);
+            }}
+            className="hidden sm:flex"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+
+          <div className="flex flex-wrap bg-muted rounded-md p-1 text-xs font-medium flex-1 sm:flex-initial overflow-x-auto whitespace-nowrap scrollbar-hide">
             <button onClick={() => setFilter("all")} className={`px-2 sm:px-3 py-1 rounded ${filter === "all" ? "bg-background shadow-xs font-semibold" : ""}`}>All</button>
             <button onClick={() => setFilter("text")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "text" ? "bg-background shadow-xs font-semibold" : ""}`}><FileText className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Text</span></button>
             <button onClick={() => setFilter("link")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "link" ? "bg-background shadow-xs font-semibold" : ""}`}><Link className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Links</span></button>
@@ -291,6 +306,20 @@ export default function SharedItems({
             <button onClick={() => setFilter("file")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "file" ? "bg-background shadow-xs font-semibold" : ""}`}><FileIcon className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Files</span></button>
             <button onClick={() => setFilter("code")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "code" ? "bg-background shadow-xs font-semibold" : ""}`}><Code className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Code</span></button>
           </div>
+
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => {
+              setIsRefreshing(true);
+              onRefresh();
+              setTimeout(() => setIsRefreshing(false), 1000);
+            }}
+            className="sm:hidden flex-shrink-0"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          </Button>
         </div>
       </div>
 
