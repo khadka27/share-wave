@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import ShareForm from "@/components/ShareForm";
 import SharedItems from "@/components/SharedItems";
+import RoomSelector from "@/components/RoomSelector";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Share2, Users, Info, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,22 @@ export default function Home() {
   const [showIntro, setShowIntro] = useState(true);
   const [userCount, setUserCount] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [roomId, setRoomId] = useState("");
+
+  // SSE for live updates
+  useEffect(() => {
+    const eventSource = new EventSource("/api/stream");
+    
+    eventSource.onmessage = (event) => {
+      if (event.data === "update") {
+        setRefreshCounter((prev) => prev + 1);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   const handleShare = () => {
     setRefreshCounter((prev) => prev + 1);
@@ -54,19 +72,24 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 bg-background border-b border-border py-4 shadow-sm">
-        <div className="container mx-auto px-4 max-w-4xl">
+    <div className="min-h-screen bg-background text-foreground relative overflow-x-hidden">
+
+
+      <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/60 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all py-4">
+        <div className="container mx-auto px-4 max-w-4xl relative z-10">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="flex flex-col sm:flex-row justify-between items-center gap-3"
           >
-            <h1 className="text-3xl sm:text-4xl font-bold bg-linear-to-r from-purple-600 via-pink-500 to-cyan-500 text-transparent bg-clip-text flex items-center gap-2">
-              <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500" />
-              ShareWave
-            </h1>
+            <div className="flex items-center">
+              <h1 className="sr-only">ShareWave - Secure Pastebin Alternative & Anonymous Text Sharing</h1>
+              <div className="relative w-40 h-12 sm:w-56 sm:h-16">
+                <Image src="/lightmode.png" alt="ShareWave Logo" fill className="object-contain block dark:hidden" priority />
+                <Image src="/darkmode.png" alt="ShareWave Logo" fill className="object-contain hidden dark:block" priority />
+              </div>
+            </div>
             <div className="flex items-center gap-3 mt-2 sm:mt-0">
               <TooltipProvider>
                 <Tooltip>
@@ -97,10 +120,10 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, height: 0, marginBottom: 0 }}
               transition={{ duration: 0.5 }}
-              className="mb-8 bg-card p-6 rounded-xl border border-border shadow-md"
+              className="mb-8 bg-card/80 backdrop-blur-xl p-6 sm:p-8 rounded-2xl border border-border/50 shadow-xl relative overflow-hidden"
             >
-              <div className="flex flex-col sm:flex-row items-start gap-4">
-                <div className="bg-primary/10 p-3 rounded-full shrink-0">
+              <div className="flex flex-col sm:flex-row items-start gap-5 relative z-0">
+                <div className="bg-primary/20 p-3.5 rounded-2xl shrink-0 shadow-inner">
                   <Share2 className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -161,7 +184,8 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <SharedItems refresh={refreshCounter} onRefresh={handleRefresh} />
+            <RoomSelector currentRoom={roomId} onRoomChange={setRoomId} />
+            <SharedItems refresh={refreshCounter} onRefresh={handleRefresh} roomId={roomId} />
           </motion.div>
         </div>
       </main>
@@ -169,9 +193,13 @@ export default function Home() {
       <footer className="border-t border-border/40 mt-12 py-6">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground text-center sm:text-left">
-              ShareWave — Local network sharing made simple
-            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-muted-foreground text-center sm:text-left">
+              <div className="relative w-32 h-10 sm:w-40 sm:h-12 shrink-0">
+                <Image src="/lightmode.png" alt="ShareWave Logo" fill className="object-contain block dark:hidden" />
+                <Image src="/darkmode.png" alt="ShareWave Logo" fill className="object-contain hidden dark:block" />
+              </div>
+              <span>Local network sharing made simple</span>
+            </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
               <Button
                 variant="ghost"

@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,291 +9,267 @@ import {
   Trash2,
   Link,
   FileText,
-  Image,
+  Image as ImageIcon,
   Clock,
   QrCode,
   X,
   Maximize2,
+  Code,
+  File as FileIcon,
+  Download,
+  Flame,
+  MessageSquare,
+  SmilePlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
+import Prism from "prismjs";
+import "prismjs/themes/prism-tomorrow.css";
+// Import some common languages for prism
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-bash";
 
-interface SharedItem {
+export interface Comment {
+  id: string;
+  text: string;
+  ip: string;
+  timestamp: number;
+}
+
+export interface SharedItem {
   id: string;
   content: string;
+  contentType: string;
   timestamp: number;
   ip: string;
-  contentType?: string;
-  expiresIn?: string;
+  
+  fileName?: string;
+  fileUrl?: string;
+  fileSize?: number;
+  mimeType?: string;
+  
+  language?: string;
+  roomId?: string;
+  
+  reactions: Record<string, number>;
+  comments: Comment[];
+  
+  isBurnAfterReading: boolean;
+  expiresAt: number;
 }
 
 export default function SharedItems({
   refresh,
   onRefresh,
+  roomId,
 }: {
   refresh: number;
   onRefresh: () => void;
+  roomId: string;
 }) {
   const [items, setItems] = useState<SharedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState("all");
-  const [qrItem, setQrItem] = useState<{
-    content: string;
-    type: string;
-  } | null>(null);
+  const [qrItem, setQrItem] = useState<{ content: string; type: string; } | null>(null);
   const [maxImage, setMaxImage] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [burnedRevealed, setBurnedRevealed] = useState<Record<string, SharedItem>>({});
 
   const fetchItems = async () => {
-    setIsLoading(true);
     try {
-      const response = await fetch("/api/share");
+      const url = roomId ? `/api/share?roomId=${roomId}` : "/api/share";
+      const response = await fetch(url);
       const data = await response.json();
       setItems(data.items || []);
     } catch (error) {
       console.error("Error fetching shared items:", error);
-      toast.error("Failed to load shared items");
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchItems();
+  }, [refresh, roomId]);
+
+  useEffect(() => {
+    Prism.highlightAll();
+  }, [items, burnedRevealed]);
+
   const deleteItem = async (id: string) => {
     try {
       const response = await fetch("/api/share", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-
       if (response.ok) {
         setItems(items.filter((item) => item.id !== id));
         toast.success("Item has been removed");
       } else {
-        const data = await response.json();
-        console.error("Error deleting item:", data.error);
-        toast.error(data.error || "Failed to delete item");
+        toast.error("Failed to delete item");
       }
     } catch (error) {
-      console.error("Error deleting item:", error);
       toast.error("Failed to delete item");
     }
   };
+
+  const handleReveal = async (id: string) => {
+    try {
+      const response = await fetch(`/api/share/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBurnedRevealed(prev => ({ ...prev, [id]: data.item }));
+        toast.success("Message revealed and burned from server");
+      } else {
+        toast.error("Message has already been burned by someone else");
+        fetchItems(); // refresh to remove it from list
+      }
+    } catch (error) {
+      toast.error("Failed to reveal message");
+    }
+  }
+
+  const addReaction = async (id: string, emoji: string) => {
+    try {
+      await fetch("/api/share/reaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, emoji }),
+      });
+    } catch (e) {
+      toast.error("Failed to add reaction");
+    }
+  }
+
+  const addComment = async (e: React.FormEvent, id: string) => {
+    e.preventDefault();
+    if (!commentText[id]?.trim()) return;
+    
+    try {
+      await fetch("/api/share/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, text: commentText[id] }),
+      });
+      setCommentText(prev => ({ ...prev, [id]: "" }));
+    } catch (e) {
+      toast.error("Failed to add comment");
+    }
+  }
 
   const copyToClipboard = async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
       toast.success("Content copied to clipboard");
     } catch (error) {
-      console.error("Error copying to clipboard:", error);
       toast.error("Failed to copy to clipboard");
     }
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchItems();
-      onRefresh();
-      toast.success("Content refreshed");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchItems();
-  }, [refresh]);
-
-  // For demonstration, assign content types to items
-  const enhancedItems = items.map((item) => {
-    // This is just for demo - in a real app, these would come from the API
-    const contentType =
-      item.contentType ||
-      (item.content.startsWith("http")
-        ? "link"
-        : item.content.startsWith("data:image") ||
-          item.content.includes("<img") ||
-          item.content.match(/\.(jpg|jpeg|png|gif|webp)$/)
-        ? "image"
-        : "text");
-
-    return {
-      ...item,
-      contentType,
-      expiresIn: item.expiresIn || "24h",
-    };
-  });
-
-  const filteredItems =
-    filter === "all"
-      ? enhancedItems
-      : enhancedItems.filter((item) => item.contentType === filter);
+  const filteredItems = filter === "all" ? items : items.filter((item) => item.contentType === filter);
 
   const getTimeAgo = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
-
     if (seconds < 60) return `${seconds} seconds ago`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
     return `${Math.floor(seconds / 86400)} days ago`;
   };
 
-  const getInitials = (ip: string) => {
-    // Get last octet of IP
-    const lastOctet = ip.split(".").pop();
-    return `U${lastOctet}`;
-  };
-
-  const getAvatarColor = (ip: string) => {
-    // Generate a consistent color based on IP
-    const num = Number.parseInt(ip.replace(/\./g, ""));
-    const hue = num % 360;
-    return `hsl(${hue}, 70%, 60%)`;
-  };
+  const getInitials = (ip: string) => `U${ip.split(".").pop()}`;
+  const getAvatarColor = (ip: string) => `hsl(${Number.parseInt(ip.replace(/\./g, "")) % 360}, 70%, 60%)`;
 
   const getContentTypeIcon = (type: string) => {
     switch (type) {
-      case "link":
-        return <Link className="h-4 w-4" />;
-      case "image":
-        return <Image className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
+      case "link": return <Link className="h-4 w-4" />;
+      case "image": return <ImageIcon className="h-4 w-4" />;
+      case "file": return <FileIcon className="h-4 w-4" />;
+      case "code": return <Code className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
   };
 
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-  const currentItemId = useRef<string | null>(null);
-  const swipeThreshold = 100;
-
-  const handleTouchStart = (e: React.TouchEvent, id: string) => {
-    touchStartX.current = e.touches[0].clientX;
-    currentItemId.current = id;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (
-      currentItemId.current &&
-      touchStartX.current - touchEndX.current > swipeThreshold
-    ) {
-      // Swiped left - delete the item
-      deleteItem(currentItemId.current);
-      toast.success("Item deleted");
-    }
-    // Reset values
-    touchStartX.current = 0;
-    touchEndX.current = 0;
-    currentItemId.current = null;
-  };
-
-  const lastTap = useRef(0);
-  const tapTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  const handleDoubleTap = (content: string) => {
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected
-      if (tapTimeout.current) {
-        clearTimeout(tapTimeout.current);
-        tapTimeout.current = null;
-      }
-      copyToClipboard(content);
-    } else {
-      // First tap
-      if (tapTimeout.current) {
-        clearTimeout(tapTimeout.current);
-      }
-      tapTimeout.current = setTimeout(() => {
-        tapTimeout.current = null;
-      }, DOUBLE_TAP_DELAY);
+  const renderContent = (item: SharedItem) => {
+    // Check if it's burn after reading and not revealed yet
+    if (item.isBurnAfterReading && !burnedRevealed[item.id]) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 bg-secondary/30 border border-dashed border-red-500/30 rounded-xl">
+          <Flame className="h-12 w-12 text-red-500 mb-3 animate-pulse" />
+          <h3 className="font-semibold text-lg text-red-500">Burn After Reading</h3>
+          <p className="text-sm text-muted-foreground mb-4 text-center">This message will be permanently deleted once you reveal it.</p>
+          <Button onClick={() => handleReveal(item.id)} variant="destructive">Reveal Message</Button>
+        </div>
+      );
     }
 
-    lastTap.current = now;
-  };
+    // If it was burned, use the revealed data
+    const activeItem = item.isBurnAfterReading ? burnedRevealed[item.id] : item;
+    if (!activeItem) return null;
 
-  const handleCopyClick = (e: React.MouseEvent, content: string) => {
-    e.stopPropagation();
-    copyToClipboard(content);
-  };
-
-  const renderContent = (item: SharedItem & { contentType: string }) => {
-    if (item.contentType === "link") {
-      const urlMatch = item.content.match(/(https?:\/\/[^\s]+)/);
+    if (activeItem.contentType === "link") {
+      const urlMatch = activeItem.content.match(/(https?:\/\/[^\s]+)/);
       const url = urlMatch ? urlMatch[0] : "";
-      const description = urlMatch
-        ? item.content.replace(url, "").trim()
-        : item.content;
-
+      const description = urlMatch ? activeItem.content.replace(url, "").trim() : activeItem.content;
       return (
         <div className="select-text">
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline hover:text-primary/80 transition-colors break-all"
-          >
-            {url}
-          </a>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{url}</a>
           {description && <p className="mt-2">{description}</p>}
         </div>
       );
     }
 
-    if (item.contentType === "image") {
+    if (activeItem.contentType === "image") {
       return (
-        <div className="relative group">
-          <div className="rounded-md overflow-hidden mt-2 border border-border bg-black/5">
-            <img
-              src={
-                item.content.startsWith("http") ||
-                item.content.startsWith("data:image")
-                  ? item.content
-                  : "/api/placeholder/400/300"
-              }
-              alt="Shared image"
-              className="max-w-full h-auto object-contain max-h-[300px] w-full"
-              loading="lazy"
-            />
-          </div>
-          <Button
-            size="icon"
-            variant="secondary"
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMaxImage(item.content);
-            }}
-          >
+        <div className="relative group mt-2">
+          <img src={activeItem.content} alt="Shared image" className="max-w-full h-auto object-contain max-h-[300px] rounded-md border border-border" loading="lazy" />
+          <Button size="icon" variant="secondary" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setMaxImage(activeItem.content); }}>
             <Maximize2 className="h-4 w-4" />
           </Button>
         </div>
       );
     }
 
-    return (
-      <p className="whitespace-pre-wrap break-words select-text">
-        {item.content}
-      </p>
-    );
+    if (activeItem.contentType === "file" && activeItem.fileUrl) {
+      return (
+        <div className="flex items-center gap-4 bg-secondary/40 p-4 rounded-xl border border-border mt-2">
+          <FileIcon className="h-10 w-10 text-primary" />
+          <div className="flex-1">
+            <p className="font-semibold">{activeItem.fileName}</p>
+            <p className="text-xs text-muted-foreground">{((activeItem.fileSize || 0) / 1024 / 1024).toFixed(2)} MB</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <a href={activeItem.fileUrl} download={activeItem.fileName} target="_blank" rel="noopener noreferrer">
+              <Download className="h-4 w-4 mr-2" /> Download
+            </a>
+          </Button>
+        </div>
+      );
+    }
+
+    if (activeItem.contentType === "code") {
+      return (
+        <div className="relative mt-2 rounded-xl overflow-hidden text-sm">
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground bg-background/80 px-2 py-0.5 rounded-md">{activeItem.language}</span>
+          </div>
+          <pre className={`language-${activeItem.language || "javascript"} p-4 m-0 overflow-x-auto`}>
+            <code>{activeItem.content}</code>
+          </pre>
+        </div>
+      );
+    }
+
+    return <p className="whitespace-pre-wrap break-words select-text">{activeItem.content}</p>;
   };
 
   return (
@@ -303,235 +278,95 @@ export default function SharedItems({
         <div>
           <h2 className="text-xl font-semibold">Shared on This Network</h2>
           <p className="text-sm text-muted-foreground">
-            {filteredItems.length}{" "}
-            {filteredItems.length === 1 ? "item" : "items"} available
+            {filteredItems.length} {filteredItems.length === 1 ? "item" : "items"} available
           </p>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="flex flex-wrap bg-muted rounded-md p-1 text-xs font-medium mr-2 flex-1 sm:flex-initial">
-            <button
-              onClick={() => setFilter("all")}
-              className={`px-2 sm:px-3 py-1 rounded ${
-                filter === "all"
-                  ? "bg-background shadow-sm"
-                  : "text-muted-foreground"
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilter("text")}
-              className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${
-                filter === "text"
-                  ? "bg-background shadow-sm"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <FileText className="h-3 w-3" />{" "}
-              <span className="hidden xs:inline">Text</span>
-            </button>
-            <button
-              onClick={() => setFilter("link")}
-              className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${
-                filter === "link"
-                  ? "bg-background shadow-sm"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <Link className="h-3 w-3" />{" "}
-              <span className="hidden xs:inline">Links</span>
-            </button>
-            <button
-              onClick={() => setFilter("image")}
-              className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${
-                filter === "image"
-                  ? "bg-background shadow-sm"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <Image className="h-3 w-3" />{" "}
-              <span className="hidden xs:inline">Images</span>
-            </button>
+            <button onClick={() => setFilter("all")} className={`px-2 sm:px-3 py-1 rounded ${filter === "all" ? "bg-background shadow-xs font-semibold" : ""}`}>All</button>
+            <button onClick={() => setFilter("text")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "text" ? "bg-background shadow-xs font-semibold" : ""}`}><FileText className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Text</span></button>
+            <button onClick={() => setFilter("link")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "link" ? "bg-background shadow-xs font-semibold" : ""}`}><Link className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Links</span></button>
+            <button onClick={() => setFilter("image")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "image" ? "bg-background shadow-xs font-semibold" : ""}`}><ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Images</span></button>
+            <button onClick={() => setFilter("file")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "file" ? "bg-background shadow-xs font-semibold" : ""}`}><FileIcon className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Files</span></button>
+            <button onClick={() => setFilter("code")} className={`px-2 sm:px-3 py-1 rounded flex items-center gap-1 ${filter === "code" ? "bg-background shadow-xs font-semibold" : ""}`}><Code className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Code</span></button>
           </div>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="h-8 w-8"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                  />
-                  <span className="sr-only">Refresh</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Refresh</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center p-12">
-          <div className="relative h-16 w-16">
-            <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <RefreshCw className="h-8 w-8 text-primary/20" />
-            </div>
-          </div>
-        </div>
+        <div className="flex justify-center p-12"><RefreshCw className="h-8 w-8 animate-spin text-primary/20" /></div>
       ) : filteredItems.length === 0 ? (
-        <Card className="border-dashed border-border">
-          <CardContent className="pt-10 pb-10 flex flex-col items-center justify-center text-center">
-            <div className="bg-secondary p-3 rounded-full mb-4">
-              {filter === "all" ? (
-                <RefreshCw className="h-6 w-6 text-primary/60" />
-              ) : (
-                getContentTypeIcon(filter)
-              )}
-            </div>
-            <p className="text-lg font-medium">
-              No {filter !== "all" ? filter : ""} items shared yet
-            </p>
-            <p className="text-muted-foreground max-w-sm mt-1">
-              {filter === "all"
-                ? "Be the first to share something with people on this network."
-                : `No ${filter} items have been shared yet. You can switch to "All" to see other types of content or share something new.`}
-            </p>
-          </CardContent>
+        <Card className="border-dashed bg-card/50 shadow-sm rounded-2xl p-10 text-center text-muted-foreground">
+          No items found in {filter === "all" ? "this feed" : filter}.
         </Card>
       ) : (
         <AnimatePresence>
           <div className="grid gap-4">
             {filteredItems.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <Card
-                  className="border-border hover:border-primary transition-colors w-full relative group"
-                  onTouchStart={(e) => handleTouchStart(e, item.id)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hidden sm:hidden touch-none pointer-events-none">
-                    <div className="flex flex-col items-center">
-                      <Trash2 className="h-4 w-4 text-red-500/70" />
-                      <span>Swipe to delete</span>
-                    </div>
-                  </div>
-                  <CardHeader className="p-4 pb-2 flex flex-row justify-between items-start">
+              <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
+                <Card className="shadow-md hover:shadow-xl bg-card/80 backdrop-blur-xl rounded-2xl overflow-hidden border-border/40 hover:border-primary/50 transition-all group">
+                  <CardHeader className="p-3 sm:p-4 pb-2 flex flex-col sm:flex-row justify-between items-start gap-2">
                     <div className="flex items-center gap-3">
-                      <Avatar
-                        className="h-8 w-8"
-                        style={{ backgroundColor: getAvatarColor(item.ip) }}
-                      >
-                        <AvatarFallback>{getInitials(item.ip)}</AvatarFallback>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback style={{ backgroundColor: getAvatarColor(item.ip) }} className="text-slate-950 font-semibold text-xs">
+                          {getInitials(item.ip)}
+                        </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">Anonymous</span>
-                          <span className="text-xs bg-secondary text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-full flex items-center gap-1 font-medium">
                             {getContentTypeIcon(item.contentType)}
-                            <span>{item.contentType}</span>
+                            <span className="capitalize">{item.contentType}</span>
                           </span>
+                          {item.isBurnAfterReading && (
+                            <span className="text-xs bg-red-500/10 text-red-500 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                              <Flame className="h-3 w-3" /> Burn
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground flex gap-1 mt-0.5">
                           <span>{getTimeAgo(item.timestamp)}</span>
-                          <span>•</span>
-                          <Clock className="h-3 w-3" />
-                          <span>Expires in {item.expiresIn}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                              onClick={() =>
-                                setQrItem({
-                                  content: item.content,
-                                  type: item.contentType || "text",
-                                })
-                              }
-                            >
-                              <QrCode className="h-4 w-4" />
-                              <span className="sr-only">QR Code</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="hidden sm:block">
-                            <p>Show QR Code</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                              onClick={(e) => handleCopyClick(e, item.content)}
-                            >
-                              <Copy className="h-4 w-4" />
-                              <span className="sr-only">Copy</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="hidden sm:block">
-                            <p>Copy to clipboard</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-500/70 hover:text-red-500 hover:bg-secondary"
-                              onClick={() => deleteItem(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="hidden sm:block">
-                            <p>Delete</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(item.content)}><Copy className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => deleteItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </CardHeader>
-                  <CardContent
-                    className="p-4 pt-2 select-none"
-                    onTouchEnd={() => handleDoubleTap(item.content)}
-                  >
-                    <div className="select-text">
-                      {renderContent(
-                        item as SharedItem & { contentType: string }
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-2 sm:hidden">
-                      Double-tap to copy
-                    </div>
+                  <CardContent className="p-4 pt-2">
+                    {renderContent(item)}
                   </CardContent>
+                  <CardFooter className="p-3 sm:p-4 border-t border-border/30 bg-secondary/10 flex flex-col gap-3">
+                    <div className="flex gap-2 w-full flex-wrap">
+                      {["👍", "❤️", "😂", "🚀", "👀"].map(emoji => (
+                        <button key={emoji} onClick={() => addReaction(item.id, emoji)} className="text-xs flex items-center gap-1 bg-secondary hover:bg-secondary/80 px-2 py-1 rounded-full transition-colors">
+                          <span>{emoji}</span>
+                          <span className="text-muted-foreground font-medium">{item.reactions?.[emoji] || 0}</span>
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div className="w-full space-y-2">
+                      {item.comments?.map(comment => (
+                        <div key={comment.id} className="text-xs flex gap-2">
+                          <span className="font-semibold">{getInitials(comment.ip)}:</span>
+                          <span className="text-muted-foreground break-words flex-1">{comment.text}</span>
+                        </div>
+                      ))}
+                      <form onSubmit={(e) => addComment(e, item.id)} className="flex items-center gap-2 mt-2">
+                        <Input 
+                          placeholder="Add a comment..." 
+                          className="h-7 text-xs bg-background" 
+                          value={commentText[item.id] || ""}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCommentText(prev => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                        <Button type="submit" size="sm" className="h-7 text-xs px-2" disabled={!commentText[item.id]}>Reply</Button>
+                      </form>
+                    </div>
+                  </CardFooter>
                 </Card>
               </motion.div>
             ))}
@@ -539,89 +374,12 @@ export default function SharedItems({
         </AnimatePresence>
       )}
 
-      {/* QR Code Modal / Overlay */}
-      <AnimatePresence>
-        {qrItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => setQrItem(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border rounded-xl shadow-lg p-6 max-w-sm w-full mx-auto relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setQrItem(null)}
-                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              <div className="text-center space-y-4">
-                <h3 className="text-lg font-semibold">Scan QR Code</h3>
-                <div className="bg-white p-4 rounded-lg inline-block">
-                  {qrItem.content.length > 2000 ? (
-                    <div className="w-[200px] h-[200px] flex items-center justify-center bg-secondary text-muted-foreground rounded-md p-4 text-center text-sm border-dashed border-2">
-                      Content too large to generate QR Code
-                    </div>
-                  ) : (
-                    <QRCode
-                      value={qrItem.content}
-                      size={200}
-                      className="h-auto w-full max-w-full"
-                      fgColor="#000000"
-                      bgColor="#FFFFFF"
-                    />
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground break-all px-2">
-                  {qrItem.type === "link"
-                    ? qrItem.content
-                    : "Scan to copy content"}
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Image Lightbox */}
-      <AnimatePresence>
-        {maxImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black p-4"
-            onClick={() => setMaxImage(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setMaxImage(null)}
-                className="absolute -top-12 right-0 text-white/70 hover:text-white"
-              >
-                <X className="h-8 w-8" />
-              </button>
-              <img
-                src={maxImage}
-                alt="Full preview"
-                className="max-w-full max-h-[85vh] object-contain rounded-md"
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {maxImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setMaxImage(null)}>
+          <img src={maxImage} className="max-w-full max-h-[90vh] object-contain" alt="Preview" />
+          <Button variant="ghost" className="absolute top-4 right-4 text-white" onClick={() => setMaxImage(null)}><X className="h-8 w-8" /></Button>
+        </div>
+      )}
     </div>
   );
 }
