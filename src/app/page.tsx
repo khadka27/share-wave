@@ -241,7 +241,7 @@ export default function Home() {
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             >
               <ArrowUp className="h-5 w-5" />
-              <span className="sr-only">Scroll to top</span>
+              <span className="sr-only">Scroll to top.</span>
             </Button>
           </motion.div>
         )}
